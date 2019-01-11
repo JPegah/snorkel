@@ -13,7 +13,17 @@ from sqlalchemy.sql import select
 
 from snorkel.models import Candidate, TemporarySpan, Sentence
 from snorkel.udf import UDF, UDFRunner
+# from snorkel.parser.spacy_parser import  spacy
 
+# try:
+import spacy as sp
+#     from spacy.cli import download
+#     try:
+#         spacy_version = int(spacy.__version__[0])
+#     except:
+#         spacy_version = 1
+# except:
+#     raise Exception("spaCy not installed. Use `pip install spacy`.")
 
 class CandidateExtractor(UDFRunner):
     """
@@ -145,11 +155,21 @@ class Ngrams(CandidateSpace):
         CandidateSpace.__init__(self)
         self.n_max     = n_max
         self.split_rgx = r'('+r'|'.join(split_tokens)+r')' if split_tokens and len(split_tokens) > 0 else None
+        # self.nlp = sp.load('en_core_web_sm')
 
     def apply(self, context):
 
         # These are the character offset--**relative to the sentence start**--for each _token_
         offsets = context.char_offsets
+        # print('This is the context I am talking about')
+        # print(context.text)
+        # print('\n')
+        # print('--------------- offsets ----------------')
+        # print(offsets)
+        # my_doc = self.nlp(context.text)
+        # print("These are the noun chunks")
+        # for chunk in my_doc.noun_chunks:
+        #     print(chunk.text, chunk.root.text, chunk.root.dep_, chunk.root.head.text)
 
         # Loop over all n-grams in **reverse** order (to facilitate longest-match semantics)
         L    = len(offsets)
@@ -177,6 +197,31 @@ class Ngrams(CandidateSpace):
                         if ts2 not in seen and ts1.get_span():
                             seen.add(ts2)
                             yield ts2
+
+
+class Noun_chunck(CandidateSpace):
+    """
+    Defines the space of candidates as all n-grams (n <= n_max) in a Sentence _x_,
+    indexing by **character offset**.
+    """
+    def __init__(self, n_max=5, split_tokens=('-', '/')):
+        CandidateSpace.__init__(self)
+        self.n_max     = n_max
+        self.split_rgx = r'('+r'|'.join(split_tokens)+r')' if split_tokens and len(split_tokens) > 0 else None
+        # self.nlp = sp.load('en_core_web_sm')
+
+    def apply(self, context):
+        nlp = sp.load('en')
+        # These are the character offset--**relative to the sentence start**--for each _token_
+        offsets = context.char_offsets # is the context the whole sentence? if so then it is resolved now
+        my_doc = nlp(context.text)
+        for chunk in my_doc.noun_chunks:
+            # print(chunk.text)
+            # print(str(chunk.start_char) + "-" + str(chunk.end_char))
+            ts = TemporarySpan(char_start=chunk.root.idx, char_end=chunk.root.idx + len(chunk.root.text) -1, sentence=context)
+            yield ts
+            # find the location of the chunk
+
 
 
 class PretaggedCandidateExtractor(UDFRunner):
@@ -283,3 +328,4 @@ class PretaggedCandidateExtractorUDF(UDF):
 
             # Add Candidate to session
             yield self.candidate_class(**candidate_args)
+
