@@ -15,6 +15,8 @@ from snorkel.models.meta import SnorkelBase
 from snorkel.models import snorkel_engine
 from snorkel.utils import camel_to_under
 
+import spacy as sp
+nlp = sp.load('en')
 
 class Candidate(SnorkelBase):
     """
@@ -37,10 +39,52 @@ class Candidate(SnorkelBase):
 
     def get_contexts(self):
         """Get a tuple of the consituent contexts making up this candidate"""
+        # print(self.__argnames__)
+        # print('----- The trend / trend parent / trend parent text')
+        # print(self.tr.__dir__())
+        # print(getattr(self, 'tr'))
+        # print(getattr(self, 'tr').get_parent())
+        # print(getattr(self, 'tr').get_parent().text)
+        # print('Here are the visible attributes: ')
+        # print(self.__dir__())
         return tuple(getattr(self, name) for name in self.__argnames__)
+
+    def get_tr_ind_loc(self, kw):
+        return getattr(self, kw).char_start, getattr(self, kw).char_end
+
+    def build_spacy_tokens(self):
+
+        trend_start_ch, trend_end_ch = self.get_tr_ind_loc('tr')
+        indic_start_ch, indic_end_ch = self.get_tr_ind_loc('ind')
+
+        temp_sent = nlp(getattr(self, 'tr').get_parent().text)
+        for token in temp_sent:
+            if token.idx <= trend_end_ch and token.idx >= trend_start_ch:
+                print('This is the identified trend text:' + str(token.text) + ' ' + str(token.head.text))
+                self.trend_token = token
+            if token.idx <= indic_end_ch and token.idx >= indic_start_ch:
+                print('This is the identified indicator text' + str(token.text) + ' ' + str(token.head.text))
+                self.indicator_token = token
+        return
+
+    def get_trend_token(self):
+        # build it based on the context --> we have sentence number and the span are index
+        if 'trend_token' not in  self.__dir__():
+            # search in the sentece for my token based on the location of the span
+            self.build_spacy_tokens()
+        return self.trend_token
+
+    def get_indicator_token(self):
+        if 'indicator_token' not in self.__dir__():
+            self.build_spacy_tokens()
+        return self.indicator_token
+
+
+
 
     def get_parent(self):
         # Fails if both contexts don't have same parent
+
         p = [c.get_parent() for c in self.get_contexts()]
         if p.count(p[0]) == len(p):
             return p[0]
