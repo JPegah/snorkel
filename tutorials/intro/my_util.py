@@ -7,7 +7,7 @@ import pandas as pd
 from snorkel.models import StableLabel
 from snorkel.db_helpers import reload_annotator_labels
 
-FPATH = 'data/automated_labels.tsv'
+FPATH = 'data/automated_labels_v2.tsv'
 
 
     

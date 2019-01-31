@@ -317,6 +317,8 @@ class RegexMatchOne(RegexMatch):
         num_dep = 0
         tokens = c.get_attrib_tokens('dep_parents')
         s = c.get_attrib_tokens("pos_tags")
+        if len(s) <= 0:
+            return False
         # print(c)
         # print(s)
         if s[0] in ['``', 'DT', 'IN', '.', 'SP', 'CC', '"', "''"]:
